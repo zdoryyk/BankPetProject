@@ -5,7 +5,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
-import ru.alishev.springcourse.FirstRestApp.dto.CardDTO;
 import ru.alishev.springcourse.FirstRestApp.dto.TransactionDTO;
 import ru.alishev.springcourse.FirstRestApp.models.Card;
 import ru.alishev.springcourse.FirstRestApp.models.Transaction;

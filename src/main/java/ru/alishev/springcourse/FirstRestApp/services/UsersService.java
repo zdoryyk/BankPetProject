@@ -55,5 +55,8 @@ public class UsersService {
         cardRepository.delete(user.getCard());
         userRepository.delete(user);
     }
+    public Optional<User> isUserPresentByEmail(String email){
+        return userRepository.findByEmail(email);
+    }
 
 }

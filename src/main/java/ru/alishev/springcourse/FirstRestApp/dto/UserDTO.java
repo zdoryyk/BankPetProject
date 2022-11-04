@@ -16,8 +16,8 @@ import java.util.Date;
 import java.util.List;
 
 public class UserDTO {
-    @NotEmpty(message = "Название не должно быть пустым!")
-    @NotNull
+    @NotEmpty(message = "Should not be empty")
+    @NotNull(message = "Should not be a null")
     private String name;
 
     @NotNull
@@ -38,6 +38,11 @@ public class UserDTO {
     private String transfer;
 
     private int amount;
+
+    private String newPassword;
+
+    @Email(message = "should be email")
+    private String newEmail;
 
     private CardDTO cardDTO;
 
@@ -113,6 +118,22 @@ public class UserDTO {
 
     public void setBirthDay(Date birthDay) {
         this.birthDay = birthDay;
+    }
+
+    public String getNewPassword() {
+        return newPassword;
+    }
+
+    public void setNewPassword(String newPassword) {
+        this.newPassword = newPassword;
+    }
+
+    public String getNewEmail() {
+        return newEmail;
+    }
+
+    public void setNewEmail(String newEmail) {
+        this.newEmail = newEmail;
     }
 
     @Override

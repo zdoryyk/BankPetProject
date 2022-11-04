@@ -2,6 +2,7 @@ package ru.alishev.springcourse.FirstRestApp.controllers;
 
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,11 +15,9 @@ import ru.alishev.springcourse.FirstRestApp.models.User;
 import ru.alishev.springcourse.FirstRestApp.services.CardService;
 import ru.alishev.springcourse.FirstRestApp.services.UsersService;
 import ru.alishev.springcourse.FirstRestApp.util.Response;
-import ru.alishev.springcourse.FirstRestApp.util.UserValidator;
 
 import javax.validation.Valid;
 import java.util.*;
-import java.util.stream.Collectors;
 
 
 @RestController
@@ -29,13 +28,12 @@ public class UserController {
     private final UsersService usersService;
     private final CardService cardService;
     private final ModelMapper modelMapper;
-    private final UserValidator userValidator;
+
     @Autowired
-    public UserController(UsersService service, CardService cardService, ModelMapper modelMapper, UserValidator userValidator) {
+    public UserController(UsersService service, CardService cardService, ModelMapper modelMapper) {
         this.usersService = service;
         this.cardService = cardService;
         this.modelMapper = modelMapper;
-        this.userValidator = userValidator;
     }
 
     @GetMapping
@@ -43,6 +41,48 @@ public class UserController {
         return usersService.getAll();
     }
 
+
+    @PatchMapping("/edit-user")
+    @Transactional
+    public HttpEntity<?> editUser(@RequestBody @Valid UserDTO userDTO, BindingResult bindingResult){
+
+        if(bindingResult.hasErrors()){
+            StringBuilder errors = new StringBuilder();
+            List<FieldError> errorList = bindingResult.getFieldErrors();
+            for(FieldError error: errorList)
+                errors.append(error.getField()).append(" - ").append(error.getDefaultMessage()).append("; ");
+
+            return ResponseEntity.badRequest().body(new Response(HttpStatus.BAD_GATEWAY,errors.toString()));
+        }
+
+        if(!usersService.isUserPresentByEmail(convertToUser(userDTO).getEmail()).isPresent()){
+            return ResponseEntity.badRequest().body(new Response(HttpStatus.BAD_REQUEST,"User not found"));
+        }
+        if(usersService.isUserPresentByEmail(userDTO.getNewEmail()).isPresent())
+            return ResponseEntity.badRequest().body(new Response(HttpStatus.BAD_REQUEST,
+                                                        "User with that email is present"));
+
+        User userToUpdate = usersService.getUserByEmail(convertToUser(userDTO).getEmail());
+
+        if(!userDTO.getPassword().equals(userToUpdate.getPassword()))
+            return ResponseEntity.badRequest().body(new Response(HttpStatus.BAD_REQUEST,"Passwords are not the same"));
+
+        if((userDTO.getNewPassword() != null && !userDTO.getNewPassword().isEmpty())
+                && !userDTO.getNewPassword().equals(userToUpdate.getPassword())){
+
+            userToUpdate.setPassword(userDTO.getNewPassword());
+        }
+
+        if((userDTO.getNewEmail() != null && !userDTO.getNewEmail().isEmpty() )
+                && !userDTO.getNewEmail().equals(userToUpdate.getEmail())){
+
+            userToUpdate.setEmail(userDTO.getNewEmail());
+        }
+
+        usersService.updateUser(userToUpdate);
+
+        return ResponseEntity.ok(HttpStatus.OK);
+    }
 
     @DeleteMapping("/delete")
     @Transactional
@@ -54,6 +94,7 @@ public class UserController {
         if(checkUser == null)
             return ResponseEntity.badRequest().body(new Response(HttpStatus.BAD_REQUEST,"User not found"));
 
+
         if(userToDelete.getPassword().equals(checkUser.getPassword())) {
             usersService.deleteUser(checkUser);
             return ResponseEntity.ok(HttpStatus.OK);
@@ -61,8 +102,6 @@ public class UserController {
             return ResponseEntity.badRequest().body(new Response(HttpStatus.BAD_REQUEST,"Passwords are not the same"));
 
     }
-
-
 
     @PostMapping("/register")
     @Transactional
@@ -76,6 +115,10 @@ public class UserController {
 
             return ResponseEntity.badRequest().body(new Response(HttpStatus.BAD_GATEWAY,errors.toString()));
         }
+            if(usersService.isUserPresentByEmail(userDTO.getEmail()).isPresent())
+                return ResponseEntity.badRequest().body(new Response(HttpStatus.BAD_REQUEST,
+                                                        "User with that email is present"));
+
 
         Card card = new Card();
         String cardNumber = card.generateCard();
@@ -86,7 +129,7 @@ public class UserController {
         User user = convertToUser(userDTO);
         user.setCard(card);
         card.setUser(user);
-
+        user.setPassword(user.getPassword());
         cardService.save(card);
         usersService.register(user);
 
@@ -104,6 +147,9 @@ public class UserController {
 
         return usersService.getUserByEmail(user.getEmail());
     }
+
+
+
 
     private User convertToUser(UserDTO userDTO){
         return modelMapper.map(userDTO, User.class);
