@@ -1,5 +1,6 @@
 package ru.alishev.springcourse.FirstRestApp.dto;
 
+import javax.persistence.criteria.CriteriaBuilder;
 import javax.validation.constraints.NotEmpty;
 
 public class CardDTO {

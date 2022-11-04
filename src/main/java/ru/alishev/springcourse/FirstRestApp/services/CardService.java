@@ -30,4 +30,8 @@ public class CardService {
     public Card getCardByUserId(int id){
         return cardRepository.getCardByUserId(id);
     }
+
+    public boolean isEmpty(String cardNumber){
+        return cardRepository.getAllCardNumbers().stream().anyMatch(x -> x.equals(cardNumber));
+    }
 }

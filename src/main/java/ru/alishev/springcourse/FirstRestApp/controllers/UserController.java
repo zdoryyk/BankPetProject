@@ -6,18 +6,20 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.*;
 import ru.alishev.springcourse.FirstRestApp.dto.UserDTO;
 import ru.alishev.springcourse.FirstRestApp.models.Card;
 import ru.alishev.springcourse.FirstRestApp.models.User;
 import ru.alishev.springcourse.FirstRestApp.services.CardService;
 import ru.alishev.springcourse.FirstRestApp.services.UsersService;
+import ru.alishev.springcourse.FirstRestApp.util.Response;
 import ru.alishev.springcourse.FirstRestApp.util.UserValidator;
 
 import javax.validation.Valid;
 import java.util.*;
+import java.util.stream.Collectors;
 
-import static ru.alishev.springcourse.FirstRestApp.util.ErrorsUtil.returnErrorsToClient;
 
 @RestController
 @RequestMapping("/users")
@@ -44,39 +46,43 @@ public class UserController {
 
     @DeleteMapping("/delete")
     @Transactional
-    public ResponseEntity<HttpStatus> deleteUser(@RequestBody Map<String,Object> userToDelete){
+    public ResponseEntity<?> deleteUser(@RequestBody UserDTO userDTO){
 
-        List<String> keys = new ArrayList<>(userToDelete.keySet());
-        List<Object> values = new ArrayList<>(userToDelete.values());
+        User userToDelete = convertToUser(userDTO);
+        User checkUser = usersService.getUserByEmail(userDTO.getEmail());
 
-        if(keys.get(0).equals("name") && keys.get(1).equals("password")
-                        || keys.get(0).equals("password") && keys.get(1).equals("name") ){
-            if(usersService.getUserByName( (String) values.get(0) ) == null)
-                return ResponseEntity.ok(HttpStatus.NOT_FOUND);
+        if(checkUser == null)
+            return ResponseEntity.badRequest().body(new Response(HttpStatus.BAD_REQUEST,"User not found"));
 
-            User user = usersService.getUserByName( (String) values.get(0) );
+        if(userToDelete.getPassword().equals(checkUser.getPassword())) {
+            usersService.deleteUser(checkUser);
+            return ResponseEntity.ok(HttpStatus.OK);
+        }else
+            return ResponseEntity.badRequest().body(new Response(HttpStatus.BAD_REQUEST,"Passwords are not the same"));
 
-            if(user.getPassword().equals(values.get(1))){
-                usersService.deleteUser(user);
-                return ResponseEntity.ok(HttpStatus.OK);
-            }
-        }
-        return ResponseEntity.ok(HttpStatus.CONFLICT);
     }
+
 
 
     @PostMapping("/register")
     @Transactional
-    public ResponseEntity<Object> addUser(@RequestBody @Valid UserDTO userDTO, BindingResult bindingResult){
+    public ResponseEntity<?> addUser(@RequestBody @Valid UserDTO userDTO, BindingResult bindingResult){
 
-        userValidator.validate(convertToUser(userDTO),bindingResult);
         if(bindingResult.hasErrors()){
-            return ResponseEntity.ok(HttpStatus.CONFLICT);
-//            returnErrorsToClient(bindingResult);
+            StringBuilder errors = new StringBuilder();
+            List<FieldError> errorList = bindingResult.getFieldErrors();
+            for(FieldError error: errorList)
+                errors.append(error.getField()).append(" - ").append(error.getDefaultMessage()).append("; ");
+
+            return ResponseEntity.badRequest().body(new Response(HttpStatus.BAD_GATEWAY,errors.toString()));
         }
 
         Card card = new Card();
-        card.setCardNumber(card.generateCard());
+        String cardNumber = card.generateCard();
+        while (cardService.isEmpty(cardNumber))
+            cardNumber = card.generateCard();
+
+        card.setCardNumber(cardNumber);
         User user = convertToUser(userDTO);
         user.setCard(card);
         card.setUser(user);
@@ -88,8 +94,15 @@ public class UserController {
     }
 
     @GetMapping("/user")
-    public User getUser(@RequestBody Map<String,String> name){
-        return usersService.getUserByName(new ArrayList<>(name.values()).get(0));
+    public Object getUser(@RequestBody UserDTO user){
+
+        if(user.getEmail() == null || user.getEmail().isEmpty())
+            return ResponseEntity.badRequest().body(new Response(HttpStatus.BAD_REQUEST,"Empty fields"));
+
+        if(usersService.getUserByEmail(user.getEmail()) == null)
+            return ResponseEntity.badRequest().body(new Response(HttpStatus.BAD_REQUEST,"User not found"));
+
+        return usersService.getUserByEmail(user.getEmail());
     }
 
     private User convertToUser(UserDTO userDTO){

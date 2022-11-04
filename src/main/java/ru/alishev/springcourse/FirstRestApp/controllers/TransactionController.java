@@ -29,12 +29,6 @@ public class TransactionController {
         return transactionService.getAll();
     }
 
-    @PostMapping("/test")
-    public void test(@RequestBody TransactionDTO transaction){
-//        transactionService.save(convertToTransaction(transaction));
-        System.out.println(transaction);
-    }
-
 
     private Transaction convertToTransaction(TransactionDTO transactionDTO){
         return modelMapper.map(transactionDTO, Transaction.class);

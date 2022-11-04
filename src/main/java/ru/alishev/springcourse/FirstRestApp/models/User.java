@@ -1,11 +1,16 @@
 package ru.alishev.springcourse.FirstRestApp.models;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.sun.istack.NotNull;
+import org.springframework.format.annotation.DateTimeFormat;
 
 import javax.persistence.*;
 import javax.validation.constraints.Email;
+import javax.validation.constraints.NotEmpty;
 import java.io.Serializable;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.List;
 
 @Entity
@@ -31,6 +36,11 @@ public class User implements Serializable {
     @Column(name = "balance")
     private int balance;
 
+    @Column(name = "date_of_birthday")
+    @Temporal(TemporalType.DATE)
+    @DateTimeFormat(pattern = "dd/MM/yyyy")
+    private Date birthDay;
+
     @OneToOne(mappedBy = "user")
     @JoinColumn(name = "id")
     private Card card;
@@ -42,12 +52,13 @@ public class User implements Serializable {
     private LocalDateTime created_at;
 
 
-    public User(String name, String password, int balance, LocalDateTime created_at,String email) {
+    public User(String name, String password, int balance, LocalDateTime created_at,String email,Date birthDay) {
         this.name = name;
         this.password = password;
         this.balance = balance;
         this.created_at = created_at;
         this.email = email;
+        this.birthDay = birthDay;
     }
 
     public User() {
@@ -110,6 +121,14 @@ public class User implements Serializable {
         this.card = card;
     }
 
+    public Date getBirthDay() {
+        return birthDay;
+    }
+
+    public void setBirthDay(Date birthDay) {
+        this.birthDay = birthDay;
+    }
+
     public List<Transaction> getTransactionList() {
         return transactionList;
     }
@@ -124,7 +143,11 @@ public class User implements Serializable {
                 "id=" + id +
                 ", name='" + name + '\'' +
                 ", password='" + password + '\'' +
+                ", email='" + email + '\'' +
                 ", balance=" + balance +
+                ", birthDay=" + birthDay +
+                ", card=" + card +
+                ", transactionList=" + transactionList +
                 ", created_at=" + created_at +
                 '}';
     }

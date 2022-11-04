@@ -1,12 +1,18 @@
 package ru.alishev.springcourse.FirstRestApp.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import org.springframework.format.annotation.DateTimeFormat;
 import ru.alishev.springcourse.FirstRestApp.models.Transaction;
 import ru.alishev.springcourse.FirstRestApp.models.User;
 
+import javax.persistence.Temporal;
+import javax.persistence.TemporalType;
 import javax.validation.constraints.Email;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
+import java.time.LocalDate;
+import java.util.Date;
 import java.util.List;
 
 public class UserDTO {
@@ -25,7 +31,9 @@ public class UserDTO {
     @NotEmpty
     private String email;
 
-//    private User user;
+    @Temporal(TemporalType.DATE)
+    @DateTimeFormat(pattern = "dd/MM/yyyy")
+    private Date birthDay;
 
     private String transfer;
 
@@ -58,14 +66,6 @@ public class UserDTO {
     public void setBalance(Integer balance) {
         this.balance = balance;
     }
-
-//    public User getUser() {
-//        return user;
-//    }
-//
-//    public void setUser(User user) {
-//        this.user = user;
-//    }
 
     public String getTransfer() {
         return transfer;
@@ -107,6 +107,14 @@ public class UserDTO {
         this.cardDTO = cardDTO;
     }
 
+    public Date getBirthDay() {
+        return birthDay;
+    }
+
+    public void setBirthDay(Date birthDay) {
+        this.birthDay = birthDay;
+    }
+
     @Override
     public String toString() {
         return "UserDTO{" +
@@ -114,8 +122,11 @@ public class UserDTO {
                 ", password='" + password + '\'' +
                 ", balance=" + balance +
                 ", email='" + email + '\'' +
+                ", birthDay=" + birthDay +
                 ", transfer='" + transfer + '\'' +
                 ", amount=" + amount +
+                ", cardDTO=" + cardDTO +
+                ", transactions=" + transactions +
                 '}';
     }
 }

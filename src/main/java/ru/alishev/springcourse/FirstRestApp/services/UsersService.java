@@ -36,12 +36,19 @@ public class UsersService {
     }
 
     public User getUserByName(String name){return userRepository.getUserByName(name);}
+
+    public User getUserByEmail(String email){return userRepository.getUserByEmail(email);};
+
     public void register(User user){
         user.setCreated_at(LocalDateTime.now());
         userRepository.save(user);
     }
     public void updateUser(User user){
         userRepository.save(user);
+    }
+
+    public void updateUser(List<User> users){
+        userRepository.saveAll(users);
     }
 
     public void deleteUser(User user){

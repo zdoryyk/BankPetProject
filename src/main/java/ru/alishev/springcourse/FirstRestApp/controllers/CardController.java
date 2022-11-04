@@ -3,19 +3,24 @@ import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import ru.alishev.springcourse.FirstRestApp.dto.CardDTO;
 import ru.alishev.springcourse.FirstRestApp.dto.TransactionDTO;
 import ru.alishev.springcourse.FirstRestApp.models.Card;
 import ru.alishev.springcourse.FirstRestApp.models.Transaction;
+import ru.alishev.springcourse.FirstRestApp.models.TransferMoney;
 import ru.alishev.springcourse.FirstRestApp.models.User;
 import ru.alishev.springcourse.FirstRestApp.services.CardService;
 import ru.alishev.springcourse.FirstRestApp.services.TransactionService;
 import ru.alishev.springcourse.FirstRestApp.services.UsersService;
+import ru.alishev.springcourse.FirstRestApp.util.Response;
 
 import java.util.*;
 
 @RestController
 @RequestMapping("/cards")
+@Transactional(readOnly = true)
 public class CardController {
     private final CardService cardService;
     private final UsersService usersService;
@@ -47,44 +52,52 @@ public class CardController {
         return cardService.getCardByUserId((new ArrayList<>(number.values()).get(0)));
     }
 
+    @PostMapping("/transfer-money")
+    @Transactional
+    public ResponseEntity<?> transfer(@RequestBody TransferMoney transferMoney){
+
+        if(cardService.getOwnerByCardNumber(transferMoney.getSender()) == null)
+            return ResponseEntity.badRequest().body(new Response(HttpStatus.BAD_REQUEST,"Sender not found"));
+        if(cardService.getOwnerByCardNumber(transferMoney.getRecipient()) == null)
+            return ResponseEntity.badRequest().body(new Response(HttpStatus.BAD_REQUEST,"Recipient not found"));
+
+        User sender = cardService.getOwnerByCardNumber(transferMoney.getSender()).getUser();
+        User recipient = cardService.getOwnerByCardNumber(transferMoney.getRecipient()).getUser();
+
+        if(sender.getBalance() < transferMoney.getAmount())
+                return ResponseEntity.badRequest().body(new Response(HttpStatus.BAD_REQUEST,"Not enough money"));
+
+
+        sender.setBalance(sender.getBalance() - transferMoney.getAmount());
+        recipient.setBalance(recipient.getBalance() + transferMoney.getAmount());
+        TransactionDTO transactionDTO = new TransactionDTO();
+        transactionDTO.setUser(sender);
+        transactionDTO.setTransaction("send");
+        transactionService.save(modelMapper.map(transactionDTO, Transaction.class));
+        usersService.updateUser(List.of(sender,recipient));
+
+        return ResponseEntity.ok(HttpStatus.OK);
+    }
+
     @PostMapping("/add")
-    public ResponseEntity<HttpStatus> addAMount(@RequestBody Map<String, Object> numbers){
+    @Transactional
+    public ResponseEntity<?> addAMount(@RequestBody TransferMoney transferMoney){
 
-        Card card = cardService.getOwnerByCardNumber((String) new ArrayList<>(numbers.values()).get(0));
-        User user = usersService.getUserById(card.getUser().getId());
+        if(cardService.getOwnerByCardNumber(transferMoney.getRecipient()) == null)
+            return ResponseEntity.badRequest().body(new Response(HttpStatus.BAD_REQUEST,"User not found"));
 
-        user.setBalance(user.getBalance() + (Integer) new ArrayList<>(numbers.values()).get(1));
-        usersService.updateUser(user);
+        User recipient = cardService.getOwnerByCardNumber(transferMoney.getRecipient()).getUser();
 
-        return ResponseEntity.ok(HttpStatus.OK);
-    }
+        recipient.setBalance(recipient.getBalance() + transferMoney.getAmount());
 
-    @PostMapping("/transfer_money")
-    public ResponseEntity<HttpStatus> transfer(@RequestBody Map<String, Object> numbers){
-
-        List<Card> cardSet = List.of(cardService.getOwnerByCardNumber((String) new ArrayList<>(numbers.values()).get(0)),
-                                    cardService.getOwnerByCardNumber((String) new ArrayList<>(numbers.values()).get(1)));
-
-        List<User> users = List.of(usersService.getUserById((cardSet.get(0).getUser().getId())),
-                                                usersService.getUserById((cardSet.get(1).getUser().getId())));
-
-
-        int amount = (Integer)new ArrayList<>(numbers.values()).get(2);
-
-        System.out.println(amount);
-        if(users.get(0).getBalance() > amount){
-            users.get(0).setBalance(users.get(0).getBalance() - amount);
-            users.get(1).setBalance(users.get(1).getBalance() + amount);
-            TransactionDTO transactionDTO = new TransactionDTO();
-            transactionDTO.setTransaction("send");
-            transactionDTO.setUser(users.get(0));
-            transactionService.save(modelMapper.map(transactionDTO, Transaction.class));
-        }
-        users.forEach(usersService::updateUser);
+        TransactionDTO transactionDTO = new TransactionDTO();
+        transactionDTO.setUser(recipient);
+        transactionDTO.setTransaction("put");
+        transactionService.save(modelMapper.map(transactionDTO, Transaction.class));
+        usersService.updateUser(recipient);
 
         return ResponseEntity.ok(HttpStatus.OK);
     }
 
-//    public ResponseEntity<HttpStatus>
 
-}
+ }
